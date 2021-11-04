@@ -13,6 +13,8 @@ var createTask = function(taskText, taskDate, taskList) {
   // append span and p element to parent li
   taskLi.append(taskSpan, taskP);
 
+  // lesson 5.4 - check due date
+  auditTask(taskLi);
 
   // append to ul list on the page
   $("#list-" + taskList).append(taskLi);
@@ -154,13 +156,25 @@ $(".list-group").on("click", "span", function() {
   // swap out elements
   $(this).replaceWith(dateInput);
 
+   // Lession 5.4 - enable jquery ui datepicker
+   dateInput.datepicker({
+    minDate: 1,
+    // he onClose option for .datepicker() allows us to execute a function when the date picker closes.
+    onClose: function (){
+      // when calendar is closed, force a "change" event on the `dateInput`
+      $(this).trigger("change");
+    }
+  });
+
   // automatically bring up the calendar
   // automatically focus on new element
   dateInput.trigger("focus");
 });
 
 // value of due date was changed
-$(".list-group").on("blur", "input[type='text']", function() {
+// lesson 5.4 change "blur" to "change", so that it listens to change instead of blur - 
+// because the blur doesnt work after the user picked the date - problem is the blur was removed! ---> solved by onClose above
+$(".list-group").on("change", "input[type='text']", function() {
   // get current text
   var date = $(this)
     .val()
@@ -190,30 +204,37 @@ $(".list-group").on("blur", "input[type='text']", function() {
 
   // replace input with span element
   $(this).replaceWith(taskSpan);
+
+  // lesson 5.4 - Pass task's <li> element into auditTask() to check new due date
+  auditTask($(taskSpan).closest(".list-group-item"));
 });
 
+
+//LESSON 5.3 START
+// enable draggable/sortable feature on list-group elements
 $(".card .list-group").sortable({
+  // enable dragging across lists
   connectWith: $(".card .list-group"),
   scroll: false,
   tolerance: "pointer",
   helper: "clone",
-  activate: function(event) {
-    //console.log("activate",$(this));
+  activate: function(event, ui) {
+    console.log(ui);
   },
 
-  deactivate: function(event) {
-    //console.log("deactivate", $(this));
+  deactivate: function(event, ui) {
+    console.log(ui);
   },
 
   over: function(event) {
-    //console.log("over", event.target);
+    console.log(event);
   },
 
   out: function(event) {
-    //console.log("out", event.target);
+    console.log(event);
   },
 
-  update: function(event) {
+  update: function() {
     // array to store the task data in
     var tempArr = [];
 
@@ -235,8 +256,7 @@ $(".card .list-group").sortable({
         date: date
       });
     });
-    console.log(tempArr);
-
+    
     // trim down list's ID to match object property 
     var arrName = $(this)
       .attr("id")
@@ -245,25 +265,56 @@ $(".card .list-group").sortable({
     // update array on tasks object and save
     tasks[arrName] = tempArr;
     saveTasks();
-  }
-
+  },
 });
 
+// trash icon can be dropped onto
 $("#trash").droppable({
   accept: ".card .list-group-item",
   tolerance: "touch",
   drop: function(event, ui) {
-    console.log("drop");
+    // remove dragged element from the dom
     ui.draggable.remove();
   },
   over: function(event, ui) {
-    console.log("over");
+    console.log(ui);
   },
   out: function(event, ui) {
-    console.log("out");
+    console.log(ui);
   }
 });
+//LESSON 5.3 END
 
+//LESSON 5.4 START
+$("#modalDueDate").datepicker({
+  minDate: 1
+});
+
+var auditTask = function(taskEl) {
+  // get date from task element
+  var date = $(taskEl).find("span").text().trim();
+  // ensure it worked
+  //console.log(date);
+
+  // convert to moment object at 5:00pm
+  var time = moment(date, "L").set("hour", 17);
+  // this should print out an object for the value of the date variable, but at 5:00pm of that date
+  //console.log(time);
+
+  // remove any old classes from element
+  $(taskEl).removeClass("list-group-item-warning list-group-item-danger");
+
+  // apply new class if task is near/over due date
+  if (moment().isAfter(time)) {
+    $(taskEl).addClass("list-group-item-danger");
+  }
+  else if (Math.abs(moment().diff(time, "days")) <= 2) {
+    $(taskEl).addClass("list-group-item-warning");
+  }
+}
+
+
+//LESSON 5.4 END
 
 // remove all tasks
 $("#remove-tasks").on("click", function() {
